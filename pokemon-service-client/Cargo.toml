@@ -9,18 +9,18 @@ edition = "2021"
 [package.metadata.smithy]
 codegen-version = "0.50.0-eb6ffe35206a4866ccd2456dc5d001173984ed75"
 [dependencies.aws-smithy-async]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-async"
+path = "../../smithy-rs/rust-runtime/aws-smithy-async"
 [dependencies.aws-smithy-client]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-client"
+path = "../../smithy-rs/rust-runtime/aws-smithy-client"
 [dependencies.aws-smithy-eventstream]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-eventstream"
+path = "../../smithy-rs/rust-runtime/aws-smithy-eventstream"
 [dependencies.aws-smithy-http]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-http"
+path = "../../smithy-rs/rust-runtime/aws-smithy-http"
 features = ["event-stream"]
 [dependencies.aws-smithy-json]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-json"
+path = "../../smithy-rs/rust-runtime/aws-smithy-json"
 [dependencies.aws-smithy-types]
-path = "/Users/lucapal/github/smithy-rs/rust-runtime/aws-smithy-types"
+path = "../../smithy-rs/rust-runtime/aws-smithy-types"
 [dependencies.bytes]
 version = "1.0.0"
 [dependencies.http]

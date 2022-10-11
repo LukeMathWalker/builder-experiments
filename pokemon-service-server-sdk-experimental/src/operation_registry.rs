@@ -28,8 +28,8 @@
 ///
 /// ```rust
 /// use std::net::SocketAddr;
-/// use pokemon_service_server_sdk::{input, output, error};
-/// use pokemon_service_server_sdk::operation_registry::OperationRegistryBuilder;
+/// use pokemon_service_server_sdk_experimental::{input, output, error};
+/// use pokemon_service_server_sdk_experimental::operation_registry::OperationRegistryBuilder;
 /// use aws_smithy_http_server::routing::Router;
 ///
 /// #[tokio::main]
