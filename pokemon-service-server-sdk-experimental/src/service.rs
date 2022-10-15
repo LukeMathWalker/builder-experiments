@@ -2,8 +2,9 @@ use crate::operation_shape::{
     CapturePokemon, CheckHealth, DoNothing, GetPokemonSpecies, GetServerStatistics, GetStorage,
 };
 use aws_smithy_http_server::operation::{
-    FailOnMissingOperation, MissingFailure, OperationShape, Upgradable,
+    FailOnMissingOperation, IntoService, MissingFailure, OperationShape, Upgradable,
 };
+use aws_smithy_http_server::operation::{Operation, OperationShapeExt};
 use aws_smithy_http_server::proto::rest::router::RestRouter;
 use aws_smithy_http_server::proto::rest_json_1::AwsRestJson1;
 use aws_smithy_http_server::routers::RoutingService;
@@ -86,12 +87,32 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
 
     pub fn get_storage<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, GetStorage, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: aws_smithy_http_server::operation::Handler<GetStorage, Extensions>,
+        Operation<IntoService<GetStorage, Handler>>:
+            Upgradable<AwsRestJson1, GetStorage, Extensions, Body, Plugin>,
+        <Operation<IntoService<GetStorage, Handler>> as Upgradable<
+            AwsRestJson1,
+            GetStorage,
+            Extensions,
+            Body,
+            Plugin,
+        >>::Service: Clone + Send + 'static,
+        <<Operation<IntoService<GetStorage, Handler>> as Upgradable<
+            AwsRestJson1,
+            GetStorage,
+            Extensions,
+            Body,
+            Plugin,
+        >>::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
+        <Operation<IntoService<GetStorage, Handler>> as Upgradable<
+            AwsRestJson1,
+            GetStorage,
+            Extensions,
+            Body,
+            Plugin,
+        >>::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
+        let route = Route::new(GetStorage::from_handler(handler).upgrade(&self.plugin));
         self.get_storage = Some(route);
         self
     }

@@ -41,7 +41,8 @@ lambda_http = "0.6.0"
 
 # Local paths
 aws-smithy-http-server = { path = "../../smithy-rs/rust-runtime/aws-smithy-http-server" }
-pokemon-service-server-sdk = { path = "../pokemon-service-server-sdk" }
+#pokemon-service-server-sdk = { path = "../pokemon-service-server-sdk" }
+pokemon-service-server-sdk = { path = "../pokemon-service-server-sdk-experimental", package = "pokemon-service-server-sdk-experimental" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
