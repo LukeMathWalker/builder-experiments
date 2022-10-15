@@ -1,10 +1,10 @@
 use crate::operation_shape::{
     CapturePokemon, CheckHealth, DoNothing, GetPokemonSpecies, GetServerStatistics, GetStorage,
 };
+use aws_smithy_http_server::operation::Operation;
 use aws_smithy_http_server::operation::{
     FailOnMissingOperation, IntoService, MissingFailure, OperationShape, Upgradable,
 };
-use aws_smithy_http_server::operation::{Operation, OperationShapeExt};
 use aws_smithy_http_server::proto::rest::router::RestRouter;
 use aws_smithy_http_server::proto::rest_json_1::AwsRestJson1;
 use aws_smithy_http_server::routers::RoutingService;
@@ -27,93 +27,49 @@ pub struct PokemonServiceBuilder<Body, Plugin> {
 impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
     pub fn check_health<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, CheckHealth, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, CheckHealth, Plugin>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
-        self.check_health = Some(route);
+        self.check_health = Some(handler.into_route(&self.plugin));
         self
     }
 
     pub fn do_nothing<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, DoNothing, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, DoNothing, Plugin>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
-        self.do_nothing = Some(route);
+        self.do_nothing = Some(handler.into_route(&self.plugin));
         self
     }
 
     pub fn get_pokemon_species<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, GetPokemonSpecies, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, GetPokemonSpecies, Plugin>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
-        self.get_pokemon_species = Some(route);
+        self.get_pokemon_species = Some(handler.into_route(&self.plugin));
         self
     }
 
     pub fn get_server_statistics<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, GetServerStatistics, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, GetServerStatistics, Plugin>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
-        self.get_server_statistics = Some(route);
+        self.get_server_statistics = Some(handler.into_route(&self.plugin));
         self
     }
 
     pub fn capture_pokemon<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: Upgradable<AwsRestJson1, CapturePokemon, Extensions, Body, Plugin>,
-        Handler::Service: Clone + Send + 'static,
-        <Handler::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        Handler::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, CapturePokemon, Plugin>,
     {
-        let route = Route::new(handler.upgrade(&self.plugin));
-        self.capture_pokemon = Some(route);
+        self.capture_pokemon = Some(handler.into_route(&self.plugin));
         self
     }
 
     pub fn get_storage<Handler, Extensions>(mut self, handler: Handler) -> Self
     where
-        Handler: aws_smithy_http_server::operation::Handler<GetStorage, Extensions>,
-        Operation<IntoService<GetStorage, Handler>>:
-            Upgradable<AwsRestJson1, GetStorage, Extensions, Body, Plugin>,
-        <Operation<IntoService<GetStorage, Handler>> as Upgradable<
-            AwsRestJson1,
-            GetStorage,
-            Extensions,
-            Body,
-            Plugin,
-        >>::Service: Clone + Send + 'static,
-        <<Operation<IntoService<GetStorage, Handler>> as Upgradable<
-            AwsRestJson1,
-            GetStorage,
-            Extensions,
-            Body,
-            Plugin,
-        >>::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
-        <Operation<IntoService<GetStorage, Handler>> as Upgradable<
-            AwsRestJson1,
-            GetStorage,
-            Extensions,
-            Body,
-            Plugin,
-        >>::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+        Handler: RouteHandler<Extensions, Body, GetStorage, Plugin>,
     {
-        let route = Route::new(GetStorage::from_handler(handler).upgrade(&self.plugin));
-        self.get_storage = Some(route);
+        self.get_storage = Some(handler.into_route(&self.plugin));
         self
     }
 
@@ -373,6 +329,47 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 router: RoutingService::new(RestRouter::from_iter(routes)),
             })
         }
+    }
+}
+
+/// A trait alias to have manageable trait bounds in the builder
+pub trait RouteHandler<Extensions, Body, Operation, Plugin> {
+    fn into_route(self, plugin: &Plugin) -> Route<Body>;
+}
+
+impl<Handler, Extensions, Body, Plugin, OperationShape>
+    RouteHandler<Extensions, Body, OperationShape, Plugin> for Handler
+where
+    Handler: aws_smithy_http_server::operation::Handler<OperationShape, Extensions>,
+    Operation<IntoService<OperationShape, Handler>>:
+        Upgradable<AwsRestJson1, OperationShape, Extensions, Body, Plugin>,
+    // This highlights that we should probably have more restrictive trait bounds
+    // on `Upgradable`'s associated types
+    <Operation<IntoService<OperationShape, Handler>> as Upgradable<
+        AwsRestJson1,
+        OperationShape,
+        Extensions,
+        Body,
+        Plugin,
+    >>::Service: Clone + Send + 'static,
+    <<Operation<IntoService<OperationShape, Handler>> as Upgradable<
+        AwsRestJson1,
+        OperationShape,
+        Extensions,
+        Body,
+        Plugin,
+    >>::Service as tower::Service<http::Request<Body>>>::Future: Send + 'static,
+    <Operation<IntoService<OperationShape, Handler>> as Upgradable<
+        AwsRestJson1,
+        OperationShape,
+        Extensions,
+        Body,
+        Plugin,
+    >>::Service: tower::Service<http::Request<Body>, Error = std::convert::Infallible>,
+    OperationShape: aws_smithy_http_server::operation::OperationShape,
+{
+    fn into_route(self, plugin: &Plugin) -> Route<Body> {
+        Route::new(Operation::from_handler(self).upgrade(&plugin))
     }
 }
 
