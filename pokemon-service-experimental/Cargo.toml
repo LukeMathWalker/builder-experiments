@@ -1,22 +1,25 @@
 [package]
-name = "pokemon-service"
+name = "pokemon-service-experimental"
 version = "0.1.0"
 edition = "2021"
 publish = false
 authors = ["Smithy-rs Server Team <smithy-rs-server@amazon.com>"]
 description = "A smithy Rust service to retrieve information about Pokémon."
-default-run = "pokemon-service"
+default-run = "pokemon-service-experimental"
+
+[lib]
+name = "pokemon_service"
 
 [[bin]]
-name = "pokemon-service"
+name = "pokemon-service-experimental"
 path = "src/bin/pokemon-service.rs"
 
 [[bin]]
-name = "pokemon-service-tls"
+name = "pokemon-service-tls-experimental"
 path = "src/bin/pokemon-service-tls.rs"
 
 [[bin]]
-name = "pokemon-service-lambda"
+name = "pokemon-service-lambda-experimental"
 path = "src/bin/pokemon-service-lambda.rs"
 
 [dependencies]
@@ -41,7 +44,7 @@ lambda_http = "0.6.0"
 
 # Local paths
 aws-smithy-http-server = { path = "../../smithy-rs/rust-runtime/aws-smithy-http-server" }
-pokemon-service-server-sdk = { path = "../pokemon-service-server-sdk" }
+pokemon-service-server-sdk = { path = "../pokemon-service-server-sdk-experimental", package = "pokemon-service-server-sdk-experimental" }
 
 [dev-dependencies]
 assert_cmd = "2.0"

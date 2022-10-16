@@ -15,9 +15,7 @@ use std::{
 
 use async_stream::stream;
 use aws_smithy_http_server::Extension;
-use pokemon_service_server_sdk::{
-    error, input, model, model::CapturingPayload, output, types::Blob,
-};
+use pokemon_service_server_sdk::{error, input, model, model::CapturingPayload, output, types::Blob};
 use rand::Rng;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -39,10 +37,7 @@ pub fn setup_tracing() {
     let filter = EnvFilter::try_from_default_env()
         .or_else(|_| EnvFilter::try_new("info"))
         .unwrap();
-    tracing_subscriber::registry()
-        .with(format)
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(format).with(filter).init();
 }
 
 /// Structure holding the translations for a Pokémon description.
@@ -140,10 +135,7 @@ pub async fn get_pokemon_species(
     input: input::GetPokemonSpeciesInput,
     state: Extension<Arc<State>>,
 ) -> Result<output::GetPokemonSpeciesOutput, error::GetPokemonSpeciesError> {
-    state
-        .0
-        .call_count
-        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    state.0.call_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     // We only support retrieving information about Pikachu.
     let pokemon = state.0.pokemons_translations.get(&input.name);
     match pokemon.as_ref() {
@@ -194,9 +186,7 @@ pub async fn get_storage(
     // We currently only support Ash and he has nothing stored
     if !(input.user == "ash" && input.passcode == "pikachu123") {
         tracing::debug!("authentication failed");
-        return Err(error::GetStorageError::NotAuthorized(
-            error::NotAuthorized {},
-        ));
+        return Err(error::GetStorageError::NotAuthorized(error::NotAuthorized {}));
     }
     Ok(output::GetStorageOutput { collection: vec![] })
 }
@@ -295,13 +285,6 @@ pub async fn check_health(_input: input::CheckHealthInput) -> output::CheckHealt
     output::CheckHealthOutput {}
 }
 
-/// Operation used to show the service is running.
-pub async fn check_health_with_database(
-    _input: input::CheckHealthInput,
-) -> output::CheckHealthOutput {
-    output::CheckHealthOutput {}
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,10 +305,7 @@ mod tests {
             .find(|flavor_text| flavor_text.language == model::Language::Spanish)
             .unwrap();
 
-        assert_eq!(
-            PIKACHU_SPANISH_FLAVOR_TEXT,
-            actual_spanish_flavor_text.flavor_text()
-        );
+        assert_eq!(PIKACHU_SPANISH_FLAVOR_TEXT, actual_spanish_flavor_text.flavor_text());
 
         let input = input::GetServerStatisticsInput {};
         let stats = get_server_statistics(input, Extension(state.clone())).await;

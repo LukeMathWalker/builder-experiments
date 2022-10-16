@@ -5,6 +5,7 @@ use aws_smithy_http_server::operation::Operation;
 use aws_smithy_http_server::operation::{
     FailOnMissingOperation, IntoService, MissingFailure, OperationShape, Upgradable,
 };
+use aws_smithy_http_server::plugin::IdentityPlugin;
 use aws_smithy_http_server::proto::rest::router::RestRouter;
 use aws_smithy_http_server::proto::rest_json_1::AwsRestJson1;
 use aws_smithy_http_server::routers::RoutingService;
@@ -12,6 +13,7 @@ use aws_smithy_http_server::routing::request_spec::{
     PathAndQuerySpec, PathSegment, PathSpec, QuerySpec, RequestSpec, UriSpec,
 };
 use aws_smithy_http_server::routing::Route;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 pub struct PokemonServiceBuilder<Body, Plugin> {
@@ -220,7 +222,7 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
 
     pub fn build(self) -> Result<PokemonService<Route<Body>>, MissingOperationsError> {
         let mut routes = Vec::with_capacity(6);
-        let mut missing_operation_names = Vec::new();
+        let mut missing_operation_names = HashMap::new();
         if let Some(r) = self.check_health {
             routes.push((
                 RequestSpec::new(
@@ -235,7 +237,8 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(CheckHealth::NAME)
+            missing_operation_names
+                .insert(CheckHealth::NAME, "PokemonServiceBuilder::check_health");
         }
         if let Some(r) = self.do_nothing {
             routes.push((
@@ -251,7 +254,7 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(DoNothing::NAME)
+            missing_operation_names.insert(DoNothing::NAME, "PokemonServiceBuilder::do_nothing");
         }
         if let Some(r) = self.get_pokemon_species {
             routes.push((
@@ -268,7 +271,10 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(GetPokemonSpecies::NAME)
+            missing_operation_names.insert(
+                GetPokemonSpecies::NAME,
+                "PokemonServiceBuilder::get_pokemon_species",
+            );
         }
         if let Some(r) = self.get_server_statistics {
             routes.push((
@@ -284,7 +290,10 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(GetServerStatistics::NAME)
+            missing_operation_names.insert(
+                GetServerStatistics::NAME,
+                "PokemonServiceBuilder::get_server_statistics",
+            );
         }
         if let Some(r) = self.capture_pokemon {
             routes.push((
@@ -301,7 +310,10 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(CapturePokemon::NAME)
+            missing_operation_names.insert(
+                CapturePokemon::NAME,
+                "PokemonServiceBuilder::capture_pokemon_event",
+            );
         }
         if let Some(r) = self.get_storage {
             routes.push((
@@ -318,11 +330,12 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
                 r,
             ))
         } else {
-            missing_operation_names.push(GetStorage::NAME)
+            missing_operation_names.insert(GetStorage::NAME, "PokemonServiceBuilder::get_storage");
         }
         if !missing_operation_names.is_empty() {
             Err(MissingOperationsError {
-                operation_names: missing_operation_names,
+                service_name: "Pokemon",
+                operation_names2setter_methods: missing_operation_names,
             })
         } else {
             Ok(PokemonService {
@@ -332,7 +345,7 @@ impl<Body, Plugin> PokemonServiceBuilder<Body, Plugin> {
     }
 }
 
-/// A trait alias to have manageable trait bounds in the builder
+/// A trait used as alias to have concise trait bounds in the builder
 pub trait RouteHandler<Extensions, Body, Operation, Plugin> {
     fn into_route(self, plugin: &Plugin) -> Route<Body>;
 }
@@ -343,8 +356,8 @@ where
     Handler: aws_smithy_http_server::operation::Handler<OperationShape, Extensions>,
     Operation<IntoService<OperationShape, Handler>>:
         Upgradable<AwsRestJson1, OperationShape, Extensions, Body, Plugin>,
-    // This highlights that we should probably have more restrictive trait bounds
-    // on `Upgradable`'s associated types
+    // The complexity of the bounds we need to add here seems to suggest that we should tighten
+    // up the bounds in `Upgradable`'s definition for its associated `Service` type.
     <Operation<IntoService<OperationShape, Handler>> as Upgradable<
         AwsRestJson1,
         OperationShape,
@@ -380,7 +393,10 @@ pub struct PokemonService<S> {
 }
 
 impl PokemonService<()> {
-    /// Constructs a builder for [`PokemonService`].
+    /// Constructs a builder for [`PokemonService`] while specifying what plugins should
+    /// be applied to the attached operations.
+    ///
+    /// Use [`PokemonService::builder_without_plugins`] if you don't need to apply plugins.
     pub fn builder<Body, Plugin>(plugin: Plugin) -> PokemonServiceBuilder<Body, Plugin> {
         PokemonServiceBuilder {
             check_health: None,
@@ -390,6 +406,21 @@ impl PokemonService<()> {
             capture_pokemon: None,
             get_storage: None,
             plugin,
+        }
+    }
+
+    /// Constructs a builder for [`PokemonService`].
+    ///
+    /// Use [`PokemonService::builder`] if you need to specify operation plugins.
+    pub fn builder_without_plugins<Body>() -> PokemonServiceBuilder<Body, IdentityPlugin> {
+        PokemonServiceBuilder {
+            check_health: None,
+            do_nothing: None,
+            get_pokemon_species: None,
+            get_server_statistics: None,
+            capture_pokemon: None,
+            get_storage: None,
+            plugin: IdentityPlugin,
         }
     }
 }
@@ -435,11 +466,28 @@ where
 
 #[derive(Debug)]
 pub struct MissingOperationsError {
-    operation_names: Vec<&'static str>,
+    service_name: &'static str,
+    operation_names2setter_methods: HashMap<&'static str, &'static str>,
 }
 
 impl Display for MissingOperationsError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "You have not registered a handler for all operations specified by the service.\nWe are missing handlers for fhe following operations: {}", self.operation_names.join(","))
+        write!(
+            f,
+            "You must specify a handler for all operations attached to the `{}` service.\n\
+            We are missing handlers for the following operations:\n",
+            self.service_name
+        )?;
+        for operation_name in self.operation_names2setter_methods.keys() {
+            writeln!(f, "- {}", operation_name)?;
+        }
+
+        writeln!(f, "\nUse the dedicated methods on `PokemonServiceBuilder` to register the missing handlers:")?;
+        for setter_name in self.operation_names2setter_methods.values() {
+            writeln!(f, "- {}", setter_name)?;
+        }
+        Ok(())
     }
 }
+
+impl std::error::Error for MissingOperationsError {}
